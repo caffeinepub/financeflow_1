@@ -3,6 +3,7 @@ import {
   ArrowLeftRight,
   Calculator,
   CreditCard,
+  FileDown,
   LayoutDashboard,
   Menu,
   Settings,
@@ -45,6 +46,11 @@ const navItems: { page: Page; label: string; icon: React.ReactNode }[] = [
     icon: <TrendingUp className="w-5 h-5" />,
   },
   { page: "budget", label: "Budget", icon: <Calculator className="w-5 h-5" /> },
+  {
+    page: "reports",
+    label: "Reports",
+    icon: <FileDown className="w-5 h-5" />,
+  },
 ];
 
 interface LayoutProps {

@@ -12,6 +12,7 @@ import Dashboard from "./pages/Dashboard";
 import Debts from "./pages/Debts";
 import Goals from "./pages/Goals";
 import Investments from "./pages/Investments";
+import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
 import Transactions from "./pages/Transactions";
 
@@ -24,6 +25,7 @@ export type Page =
   | "goals"
   | "investments"
   | "budget"
+  | "reports"
   | "settings";
 
 export default function App() {
@@ -156,6 +158,8 @@ export default function App() {
         return <Investments actor={actor} />;
       case "budget":
         return <Budget actor={actor} />;
+      case "reports":
+        return <Reports actor={actor} />;
       case "settings":
         return (
           <Settings
