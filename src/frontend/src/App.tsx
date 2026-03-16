@@ -12,7 +12,6 @@ import Dashboard from "./pages/Dashboard";
 import Debts from "./pages/Debts";
 import Goals from "./pages/Goals";
 import Investments from "./pages/Investments";
-import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
 import Transactions from "./pages/Transactions";
 
@@ -25,7 +24,6 @@ export type Page =
   | "goals"
   | "investments"
   | "budget"
-  | "reports"
   | "settings";
 
 export default function App() {
@@ -33,9 +31,15 @@ export default function App() {
     useInternetIdentity();
   const { actor } = useActor();
   const [currentPage, setCurrentPage] = useState<Page>("dashboard");
+  const [pageKey, setPageKey] = useState(0);
   const [darkMode, setDarkMode] = useState(() => {
     return localStorage.getItem("darkMode") === "true";
   });
+
+  const navigateTo = (page: Page) => {
+    setCurrentPage(page);
+    setPageKey((k) => k + 1);
+  };
 
   useEffect(() => {
     if (darkMode) {
@@ -143,33 +147,32 @@ export default function App() {
       );
     switch (currentPage) {
       case "dashboard":
-        return <Dashboard actor={actor} setPage={setCurrentPage} />;
+        return <Dashboard key={pageKey} actor={actor} setPage={navigateTo} />;
       case "accounts":
-        return <Accounts actor={actor} />;
+        return <Accounts key={pageKey} actor={actor} />;
       case "transactions":
-        return <Transactions actor={actor} />;
+        return <Transactions key={pageKey} actor={actor} />;
       case "categories":
-        return <Categories actor={actor} />;
+        return <Categories key={pageKey} actor={actor} />;
       case "debts":
-        return <Debts actor={actor} />;
+        return <Debts key={pageKey} actor={actor} />;
       case "goals":
-        return <Goals actor={actor} />;
+        return <Goals key={pageKey} actor={actor} />;
       case "investments":
-        return <Investments actor={actor} />;
+        return <Investments key={pageKey} actor={actor} />;
       case "budget":
-        return <Budget actor={actor} />;
-      case "reports":
-        return <Reports actor={actor} />;
+        return <Budget key={pageKey} actor={actor} />;
       case "settings":
         return (
           <Settings
+            key={pageKey}
             darkMode={darkMode}
             setDarkMode={setDarkMode}
             onSignOut={clear}
           />
         );
       default:
-        return <Dashboard actor={actor} setPage={setCurrentPage} />;
+        return <Dashboard key={pageKey} actor={actor} setPage={navigateTo} />;
     }
   };
 
@@ -177,7 +180,7 @@ export default function App() {
     <CurrencyProvider>
       <Layout
         currentPage={currentPage}
-        setCurrentPage={setCurrentPage}
+        setCurrentPage={navigateTo}
         darkMode={darkMode}
         setDarkMode={setDarkMode}
       >

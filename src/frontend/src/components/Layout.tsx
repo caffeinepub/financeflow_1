@@ -3,9 +3,8 @@ import {
   ArrowLeftRight,
   Calculator,
   CreditCard,
-  FileDown,
   LayoutDashboard,
-  Menu,
+  MoreHorizontal,
   Settings,
   Tag,
   Target,
@@ -15,9 +14,9 @@ import {
 import type { ReactNode } from "react";
 import { useState } from "react";
 import type { Page } from "../App";
-import { Button } from "./ui/button";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "./ui/sheet";
 
-const navItems: { page: Page; label: string; icon: React.ReactNode }[] = [
+const primaryNav: { page: Page; label: string; icon: React.ReactNode }[] = [
   {
     page: "dashboard",
     label: "Dashboard",
@@ -26,9 +25,18 @@ const navItems: { page: Page; label: string; icon: React.ReactNode }[] = [
   { page: "accounts", label: "Accounts", icon: <Wallet className="w-5 h-5" /> },
   {
     page: "transactions",
-    label: "Transactions",
+    label: "Trans.",
     icon: <ArrowLeftRight className="w-5 h-5" />,
   },
+  { page: "budget", label: "Budget", icon: <Calculator className="w-5 h-5" /> },
+  {
+    page: "settings",
+    label: "Settings",
+    icon: <Settings className="w-5 h-5" />,
+  },
+];
+
+const moreNav: { page: Page; label: string; icon: React.ReactNode }[] = [
   {
     page: "categories",
     label: "Categories",
@@ -45,12 +53,6 @@ const navItems: { page: Page; label: string; icon: React.ReactNode }[] = [
     label: "Investments",
     icon: <TrendingUp className="w-5 h-5" />,
   },
-  { page: "budget", label: "Budget", icon: <Calculator className="w-5 h-5" /> },
-  {
-    page: "reports",
-    label: "Reports",
-    icon: <FileDown className="w-5 h-5" />,
-  },
 ];
 
 interface LayoutProps {
@@ -66,97 +68,100 @@ export default function Layout({
   currentPage,
   setCurrentPage,
 }: LayoutProps) {
-  const [mobileOpen, setMobileOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
 
-  const NavContent = () => (
-    <>
-      <div className="flex items-center gap-2 px-4 py-5 border-b border-border">
-        <div className="bg-primary rounded-lg p-1.5">
-          <CreditCard className="w-5 h-5 text-primary-foreground" />
-        </div>
-        <span className="font-bold text-lg text-foreground">FinanceFlow</span>
-      </div>
-      <nav className="flex-1 py-4 px-2 space-y-1 overflow-y-auto">
-        {navItems.map((item) => (
-          <button
-            type="button"
-            key={item.page + item.label}
-            data-ocid={`nav.${item.page}.link`}
-            onClick={() => {
-              setCurrentPage(item.page);
-              setMobileOpen(false);
-            }}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-              currentPage === item.page
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:text-foreground hover:bg-accent"
-            }`}
-          >
-            {item.icon}
-            {item.label}
-          </button>
-        ))}
-      </nav>
-      <div className="p-3 border-t border-border">
-        <button
-          type="button"
-          data-ocid="nav.settings.link"
-          onClick={() => {
-            setCurrentPage("settings");
-            setMobileOpen(false);
-          }}
-          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-            currentPage === "settings"
-              ? "bg-primary text-primary-foreground"
-              : "text-muted-foreground hover:text-foreground hover:bg-accent"
-          }`}
-        >
-          <Settings className="w-5 h-5" />
-          Settings
-        </button>
-      </div>
-    </>
-  );
+  const isMoreActive = moreNav.some((item) => item.page === currentPage);
+
+  const handleNav = (page: Page) => {
+    setCurrentPage(page);
+    setMoreOpen(false);
+  };
 
   return (
-    <div className="flex h-screen bg-background overflow-hidden">
-      {/* Desktop Sidebar */}
-      <aside className="hidden md:flex flex-col w-56 bg-card border-r border-border flex-shrink-0">
-        <NavContent />
-      </aside>
-
-      {/* Mobile Sidebar Overlay */}
-      {mobileOpen && (
-        <div className="fixed inset-0 z-50 flex md:hidden">
-          <div
-            className="absolute inset-0 bg-black/50"
-            onClick={() => setMobileOpen(false)}
-            onKeyDown={(e) => e.key === "Escape" && setMobileOpen(false)}
-            role="button"
-            tabIndex={0}
-            aria-label="Close menu"
-          />
-          <aside className="relative flex flex-col w-64 bg-card border-r border-border">
-            <NavContent />
-          </aside>
+    <div className="flex flex-col h-screen bg-background overflow-hidden">
+      {/* Top Header */}
+      <header className="flex items-center gap-2 px-4 py-3 bg-card border-b border-border flex-shrink-0">
+        <div className="bg-primary rounded-lg p-1.5">
+          <CreditCard className="w-4 h-4 text-primary-foreground" />
         </div>
-      )}
+        <span className="font-bold text-base text-foreground">FinanceFlow</span>
+      </header>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        {/* Mobile Header */}
-        <header className="md:hidden flex items-center gap-3 px-4 py-3 bg-card border-b border-border">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setMobileOpen(true)}
+      <main className="flex-1 overflow-y-auto p-4">{children}</main>
+
+      {/* Bottom Navigation Bar */}
+      <nav className="flex-shrink-0 bg-card border-t border-border shadow-[0_-2px_12px_rgba(0,0,0,0.08)]">
+        <div className="flex items-stretch">
+          {primaryNav.map((item) => (
+            <button
+              type="button"
+              key={item.page}
+              data-ocid={`nav.${item.page}.link`}
+              onClick={() => handleNav(item.page)}
+              className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-2 px-1 text-[10px] font-medium transition-colors min-h-[56px] ${
+                currentPage === item.page
+                  ? "text-primary"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <span
+                className={`${currentPage === item.page ? "text-primary" : ""}`}
+              >
+                {item.icon}
+              </span>
+              <span>{item.label}</span>
+            </button>
+          ))}
+          {/* More button */}
+          <button
+            type="button"
+            data-ocid="nav.more.button"
+            onClick={() => setMoreOpen(true)}
+            className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-2 px-1 text-[10px] font-medium transition-colors min-h-[56px] ${
+              isMoreActive
+                ? "text-primary"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
           >
-            <Menu className="w-5 h-5" />
-          </Button>
-          <span className="font-bold text-foreground">FinanceFlow</span>
-        </header>
-        <main className="flex-1 overflow-y-auto p-4 md:p-6">{children}</main>
-      </div>
+            <MoreHorizontal className="w-5 h-5" />
+            <span>More</span>
+          </button>
+        </div>
+      </nav>
+
+      {/* More Sheet */}
+      <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
+        <SheetContent
+          side="bottom"
+          data-ocid="nav.more.sheet"
+          className="pb-safe"
+        >
+          <SheetHeader className="mb-4">
+            <SheetTitle className="text-sm text-muted-foreground">
+              More sections
+            </SheetTitle>
+          </SheetHeader>
+          <div className="grid grid-cols-4 gap-3 pb-4">
+            {moreNav.map((item) => (
+              <button
+                type="button"
+                key={item.page}
+                data-ocid={`nav.${item.page}.link`}
+                onClick={() => handleNav(item.page)}
+                className={`flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl text-xs font-medium transition-colors ${
+                  currentPage === item.page
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-accent text-foreground hover:bg-primary/10"
+                }`}
+              >
+                {item.icon}
+                <span>{item.label}</span>
+              </button>
+            ))}
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
