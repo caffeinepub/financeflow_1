@@ -1,6 +1,7 @@
 import {
   BarChart2,
   Landmark,
+  RefreshCw,
   TrendingDown,
   TrendingUp,
   Wallet,
@@ -29,12 +30,14 @@ import type {
   PortfolioSummary,
   backendInterface,
 } from "../backend";
+import { Button } from "../components/ui/button";
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
 } from "../components/ui/card";
+import { Skeleton } from "../components/ui/skeleton";
 import { useCurrency } from "../context/CurrencyContext";
 import {
   formatCurrencyWithCode,
@@ -45,6 +48,27 @@ import {
 interface Props {
   actor: backendInterface;
   setPage: (p: Page) => void;
+}
+
+function DashboardSkeleton() {
+  return (
+    <div className="space-y-6">
+      <div>
+        <Skeleton className="h-8 w-36 mb-2" />
+        <Skeleton className="h-4 w-28" />
+      </div>
+      <Skeleton className="h-32 w-full rounded-xl" />
+      <div className="grid grid-cols-3 gap-4">
+        <Skeleton className="h-24 rounded-xl" />
+        <Skeleton className="h-24 rounded-xl" />
+        <Skeleton className="h-24 rounded-xl" />
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Skeleton className="h-64 rounded-xl" />
+        <Skeleton className="h-64 rounded-xl" />
+      </div>
+    </div>
+  );
 }
 
 export default function Dashboard({ actor, setPage }: Props) {
@@ -71,34 +95,15 @@ export default function Dashboard({ actor, setPage }: Props) {
     totalProfitLoss: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [slowLoad, setSlowLoad] = useState(false);
 
   useEffect(() => {
     const load = async () => {
       setLoading(true);
+      setError(null);
       try {
-        const [bal, cats, accs, dbs, invs, pf] = await Promise.all([
-          actor.getTotalBalance(),
-          actor.getAllCategories(),
-          actor.getAllAccounts(),
-          actor.getAllDebts(),
-          actor.getAllInvestments(),
-          actor.getPortfolioSummary(),
-        ]);
-        setTotalBalance(bal);
-        setCategories(cats);
-        setAccounts(accs);
-        setDebts(dbs);
-        setInvestments(invs);
-        setPortfolio(pf);
-
         const currentMonth = getCurrentMonth();
-        const [sum, catSpend] = await Promise.all([
-          actor.getMonthlySummary(currentMonth),
-          actor.getCategorySpending(currentMonth),
-        ]);
-        setSummary(sum);
-        setCategorySpending(catSpend);
-
         const now = new Date();
         const months: string[] = [];
         for (let i = 5; i >= 0; i--) {
@@ -107,24 +112,63 @@ export default function Dashboard({ actor, setPage }: Props) {
             `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`,
           );
         }
-        const monthSummaries = await Promise.all(
-          months.map((m) => actor.getMonthlySummary(m)),
-        );
+
+        // Fire ALL requests in parallel at once
+        const [
+          bal,
+          cats,
+          accs,
+          dbs,
+          invs,
+          pf,
+          sum,
+          catSpend,
+          ...monthSummaries
+        ] = await Promise.all([
+          actor.getTotalBalance(),
+          actor.getAllCategories(),
+          actor.getAllAccounts(),
+          actor.getAllDebts(),
+          actor.getAllInvestments(),
+          actor.getPortfolioSummary(),
+          actor.getMonthlySummary(currentMonth),
+          actor.getCategorySpending(currentMonth),
+          ...months.map((m) => actor.getMonthlySummary(m)),
+        ]);
+
+        setTotalBalance(bal);
+        setCategories(cats);
+        setAccounts(accs);
+        setDebts(dbs);
+        setInvestments(invs);
+        setPortfolio(pf);
+        setSummary(sum);
+        setCategorySpending(catSpend);
         setMonthlyData(
           months.map((m, i) => ({
             month: m.slice(5),
-            income: monthSummaries[i].totalIncome,
-            expenses: monthSummaries[i].totalExpenses,
+            income: (monthSummaries as MonthlySummary[])[i].totalIncome,
+            expenses: (monthSummaries as MonthlySummary[])[i].totalExpenses,
           })),
         );
       } catch (e) {
         console.error(e);
+        setError("Failed to load dashboard data. Please try again.");
       } finally {
         setLoading(false);
       }
     };
     load();
   }, [actor]);
+
+  useEffect(() => {
+    if (!loading) {
+      setSlowLoad(false);
+      return;
+    }
+    const t = setTimeout(() => setSlowLoad(true), 5000);
+    return () => clearTimeout(t);
+  }, [loading]);
 
   const totalDebt = debts.reduce((sum, d) => sum + d.remainingBalance, 0);
   const netWorth = totalBalance + portfolio.totalCurrentValue - totalDebt;
@@ -150,11 +194,27 @@ export default function Dashboard({ actor, setPage }: Props) {
 
   if (loading)
     return (
-      <div
-        data-ocid="dashboard.loading_state"
-        className="flex items-center justify-center h-64"
-      >
-        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+      <>
+        <DashboardSkeleton />
+        {slowLoad && (
+          <p className="text-xs text-muted-foreground text-center mt-2">
+            Backend is waking up, this may take up to 30 seconds...
+          </p>
+        )}
+      </>
+    );
+
+  if (error)
+    return (
+      <div className="flex flex-col items-center justify-center py-16 gap-4 text-center">
+        <p className="text-destructive font-medium">{error}</p>
+        <Button
+          variant="outline"
+          onClick={() => window.location.reload()}
+          data-ocid="dashboard.retry.button"
+        >
+          <RefreshCw className="w-4 h-4 mr-2" /> Retry
+        </Button>
       </div>
     );
 

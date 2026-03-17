@@ -1,4 +1,10 @@
-import { AlertTriangle, ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import {
+  AlertTriangle,
+  ChevronLeft,
+  ChevronRight,
+  Plus,
+  RefreshCw,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import type {
   Budget as BudgetType,
@@ -45,6 +51,8 @@ export default function Budget({ actor }: Props) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [spending, setSpending] = useState<CategorySpending[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [slowLoad, setSlowLoad] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<bigint | null>(null);
   const [form, setForm] = useState({ categoryId: "", limitAmount: "" });
@@ -58,20 +66,36 @@ export default function Budget({ actor }: Props) {
 
   const load = async () => {
     setLoading(true);
-    const [allBudgets, cats, spendData] = await Promise.all([
-      actor.getAllBudgets(),
-      actor.getAllCategories(),
-      actor.getCategorySpending(month),
-    ]);
-    setBudgets(allBudgets.filter((b) => b.month === month));
-    setCategories(cats);
-    setSpending(spendData);
-    setLoading(false);
+    setError(null);
+    try {
+      const [allBudgets, cats, spendData] = await Promise.all([
+        actor.getAllBudgets(),
+        actor.getAllCategories(),
+        actor.getCategorySpending(month),
+      ]);
+      setBudgets(allBudgets.filter((b) => b.month === month));
+      setCategories(cats);
+      setSpending(spendData);
+    } catch (e) {
+      console.error(e);
+      setError("Failed to load budget data. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
   // biome-ignore lint/correctness/useExhaustiveDependencies: load is recreated each render
   useEffect(() => {
     load();
   }, [actor, month]);
+
+  useEffect(() => {
+    if (!loading) {
+      setSlowLoad(false);
+      return;
+    }
+    const t = setTimeout(() => setSlowLoad(true), 5000);
+    return () => clearTimeout(t);
+  }, [loading]);
 
   const openAdd = () => {
     setForm({ categoryId: "", limitAmount: "" });
@@ -153,12 +177,29 @@ export default function Budget({ actor }: Props) {
         </div>
       </div>
 
+      {error && (
+        <div className="flex flex-col items-center justify-center py-16 gap-4 text-center">
+          <p className="text-destructive font-medium">{error}</p>
+          <Button
+            variant="outline"
+            onClick={load}
+            data-ocid="budget.retry.button"
+          >
+            <RefreshCw className="w-4 h-4 mr-2" /> Retry
+          </Button>
+        </div>
+      )}
       {loading ? (
         <div
           data-ocid="budget.loading_state"
-          className="flex justify-center py-12"
+          className="flex flex-col items-center justify-center py-12 gap-2"
         >
           <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+          {slowLoad && (
+            <p className="text-xs text-muted-foreground text-center mt-2">
+              Backend is waking up, this may take up to 30 seconds...
+            </p>
+          )}
         </div>
       ) : budgets.length === 0 ? (
         <div

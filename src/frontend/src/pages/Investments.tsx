@@ -1,4 +1,11 @@
-import { Pencil, Plus, Trash2, TrendingDown, TrendingUp } from "lucide-react";
+import {
+  Pencil,
+  Plus,
+  RefreshCw,
+  Trash2,
+  TrendingDown,
+  TrendingUp,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import type {
   Investment,
@@ -49,6 +56,8 @@ export default function Investments({ actor }: Props) {
     totalProfitLoss: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [slowLoad, setSlowLoad] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<bigint | null>(null);
   const [form, setForm] = useState(emptyForm);
@@ -56,18 +65,34 @@ export default function Investments({ actor }: Props) {
 
   const load = async () => {
     setLoading(true);
-    const [invs, pf] = await Promise.all([
-      actor.getAllInvestments(),
-      actor.getPortfolioSummary(),
-    ]);
-    setInvestments(invs);
-    setPortfolio(pf);
-    setLoading(false);
+    setError(null);
+    try {
+      const [invs, pf] = await Promise.all([
+        actor.getAllInvestments(),
+        actor.getPortfolioSummary(),
+      ]);
+      setInvestments(invs);
+      setPortfolio(pf);
+    } catch (e) {
+      console.error(e);
+      setError("Failed to load investments. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
   // biome-ignore lint/correctness/useExhaustiveDependencies: load is recreated each render
   useEffect(() => {
     load();
   }, [actor]);
+
+  useEffect(() => {
+    if (!loading) {
+      setSlowLoad(false);
+      return;
+    }
+    const t = setTimeout(() => setSlowLoad(true), 5000);
+    return () => clearTimeout(t);
+  }, [loading]);
 
   const openAdd = () => {
     setForm(emptyForm);
@@ -173,12 +198,29 @@ export default function Investments({ actor }: Props) {
         </Card>
       </div>
 
+      {error && (
+        <div className="flex flex-col items-center justify-center py-16 gap-4 text-center">
+          <p className="text-destructive font-medium">{error}</p>
+          <Button
+            variant="outline"
+            onClick={load}
+            data-ocid="investments.retry.button"
+          >
+            <RefreshCw className="w-4 h-4 mr-2" /> Retry
+          </Button>
+        </div>
+      )}
       {loading ? (
         <div
           data-ocid="investments.loading_state"
-          className="flex justify-center py-12"
+          className="flex flex-col items-center justify-center py-12 gap-2"
         >
           <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+          {slowLoad && (
+            <p className="text-xs text-muted-foreground text-center mt-2">
+              Backend is waking up, this may take up to 30 seconds...
+            </p>
+          )}
         </div>
       ) : investments.length === 0 ? (
         <div

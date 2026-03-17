@@ -1,4 +1,11 @@
-import { Pencil, Plus, PlusCircle, Target, Trash2 } from "lucide-react";
+import {
+  Pencil,
+  Plus,
+  PlusCircle,
+  RefreshCw,
+  Target,
+  Trash2,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import type { Goal, backendInterface } from "../backend";
 import { Button } from "../components/ui/button";
@@ -38,6 +45,8 @@ export default function Goals({ actor }: Props) {
   const { currency } = useCurrency();
   const [goals, setGoals] = useState<Goal[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [slowLoad, setSlowLoad] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [contributeOpen, setContributeOpen] = useState<bigint | null>(null);
   const [contributeAmount, setContributeAmount] = useState("");
@@ -47,13 +56,29 @@ export default function Goals({ actor }: Props) {
 
   const load = async () => {
     setLoading(true);
-    setGoals(await actor.getAllGoals());
-    setLoading(false);
+    setError(null);
+    try {
+      setGoals(await actor.getAllGoals());
+    } catch (e) {
+      console.error(e);
+      setError("Failed to load goals. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
   // biome-ignore lint/correctness/useExhaustiveDependencies: load is recreated each render
   useEffect(() => {
     load();
   }, [actor]);
+
+  useEffect(() => {
+    if (!loading) {
+      setSlowLoad(false);
+      return;
+    }
+    const t = setTimeout(() => setSlowLoad(true), 5000);
+    return () => clearTimeout(t);
+  }, [loading]);
 
   const openAdd = () => {
     setForm(emptyForm);
@@ -134,12 +159,29 @@ export default function Goals({ actor }: Props) {
         </Button>
       </div>
 
+      {error && (
+        <div className="flex flex-col items-center justify-center py-16 gap-4 text-center">
+          <p className="text-destructive font-medium">{error}</p>
+          <Button
+            variant="outline"
+            onClick={load}
+            data-ocid="goals.retry.button"
+          >
+            <RefreshCw className="w-4 h-4 mr-2" /> Retry
+          </Button>
+        </div>
+      )}
       {loading ? (
         <div
           data-ocid="goals.loading_state"
-          className="flex justify-center py-12"
+          className="flex flex-col items-center justify-center py-12 gap-2"
         >
           <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+          {slowLoad && (
+            <p className="text-xs text-muted-foreground text-center mt-2">
+              Backend is waking up, this may take up to 30 seconds...
+            </p>
+          )}
         </div>
       ) : goals.length === 0 ? (
         <div

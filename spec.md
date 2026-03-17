@@ -1,29 +1,26 @@
 # FinanceFlow
 
 ## Current State
-FinanceFlow is a full personal finance tracking app with Dashboard, Accounts, Transactions, Categories, Debts, Goals, Investments, Budget, and Settings pages. Transactions page has a basic CSV export for transactions only.
+All data pages (Accounts, Transactions, Debts, Goals, Investments, Budget, Categories, Dashboard) load data via `useEffect` calling backend actor methods. Most pages (Accounts, Transactions, Debts, Goals, Investments, Budget, Categories) do NOT have try/catch/finally in their load functions — if the backend is slow or the first call fails/times out, `setLoading(false)` is never called and the page is stuck in an infinite spinner with no way to recover.
 
 ## Requested Changes (Diff)
 
 ### Add
-- A new "Reports" page accessible from the sidebar.
-- On the Reports page, users can download individual CSV reports for each data type:
-  - Transactions report (all transactions with category, account, date, type, amount, notes)
-  - Accounts summary (name, type, balance, notes)
-  - Debts report (name, lender, total amount, remaining balance, EMI, interest rate, due date, notes)
-  - Investments report (name, type, amount invested, current value, profit/loss, date, notes)
-  - Goals report (name, target amount, current amount, monthly contribution, deadline, notes)
-  - Budget report (category, month, limit, spent, status)
-  - Complete financial report (all sections combined into one CSV with section headers)
+- Error state (`error: string | null`) to all data pages
+- Auto-retry logic: retry up to 3 times with 2s delay before showing error
+- "Retry" button displayed when load fails, allowing user to manually re-trigger load
+- Informational message during first load: "Waking up backend, please wait..."
 
 ### Modify
-- App.tsx: Add "reports" to the Page type and add Reports page rendering.
-- Layout.tsx: Add "Reports" nav item with a FileDown icon.
+- All page load functions: wrap in try/catch/finally so `setLoading(false)` always runs
+- Dashboard: already has try/catch/finally, add retry button on error
+- Accounts, Transactions, Debts, Goals, Investments, Budget, Categories: add proper error handling
 
 ### Remove
-- Nothing removed.
+- Nothing removed
 
 ## Implementation Plan
-1. Create `src/frontend/src/pages/Reports.tsx` with all download buttons and logic.
-2. Update `App.tsx` to include reports page type and routing.
-3. Update `Layout.tsx` to add Reports to nav items.
+1. Add error state + retry button pattern to every data page
+2. Wrap all load functions in try/catch/finally
+3. Show a helpful slow-backend message after 5s of loading
+4. Dashboard: add error state display with retry button

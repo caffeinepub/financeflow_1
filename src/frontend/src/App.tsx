@@ -1,19 +1,20 @@
 import { Shield, TrendingUp, Wallet } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Suspense, lazy, useEffect, useState } from "react";
 import Layout from "./components/Layout";
 import { Button } from "./components/ui/button";
 import { CurrencyProvider } from "./context/CurrencyContext";
 import { useActor } from "./hooks/useActor";
 import { useInternetIdentity } from "./hooks/useInternetIdentity";
-import Accounts from "./pages/Accounts";
-import Budget from "./pages/Budget";
-import Categories from "./pages/Categories";
-import Dashboard from "./pages/Dashboard";
-import Debts from "./pages/Debts";
-import Goals from "./pages/Goals";
-import Investments from "./pages/Investments";
-import Settings from "./pages/Settings";
-import Transactions from "./pages/Transactions";
+
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Accounts = lazy(() => import("./pages/Accounts"));
+const Transactions = lazy(() => import("./pages/Transactions"));
+const Categories = lazy(() => import("./pages/Categories"));
+const Debts = lazy(() => import("./pages/Debts"));
+const Goals = lazy(() => import("./pages/Goals"));
+const Investments = lazy(() => import("./pages/Investments"));
+const Settings = lazy(() => import("./pages/Settings"));
+const Budget = lazy(() => import("./pages/Budget"));
 
 export type Page =
   | "dashboard"
@@ -25,6 +26,14 @@ export type Page =
   | "investments"
   | "budget"
   | "settings";
+
+function PageLoader() {
+  return (
+    <div className="flex items-center justify-center h-64">
+      <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
+}
 
 export default function App() {
   const { identity, login, isInitializing, isLoggingIn, clear } =
@@ -69,9 +78,11 @@ export default function App() {
             { name: "Investment", color: "#22c55e" },
             { name: "Others", color: "#94a3b8" },
           ];
-          for (const cat of defaults) {
-            await actor.createCategory(cat.name, cat.color, true);
-          }
+          await Promise.all(
+            defaults.map((cat) =>
+              actor.createCategory(cat.name, cat.color, true),
+            ),
+          );
         }
       } catch (e) {
         console.error("Failed to seed categories", e);
@@ -85,7 +96,7 @@ export default function App() {
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div data-ocid="app.loading_state" className="text-center">
           <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-muted-foreground">Loading...</p>
+          <p className="text-muted-foreground">Loading FinanceFlow...</p>
         </div>
       </div>
     );
@@ -139,12 +150,7 @@ export default function App() {
   }
 
   const renderPage = () => {
-    if (!actor)
-      return (
-        <div className="flex items-center justify-center h-full">
-          <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-        </div>
-      );
+    if (!actor) return <PageLoader />;
     switch (currentPage) {
       case "dashboard":
         return <Dashboard key={pageKey} actor={actor} setPage={navigateTo} />;
@@ -184,7 +190,7 @@ export default function App() {
         darkMode={darkMode}
         setDarkMode={setDarkMode}
       >
-        {renderPage()}
+        <Suspense fallback={<PageLoader />}>{renderPage()}</Suspense>
       </Layout>
     </CurrencyProvider>
   );
